@@ -1,19 +1,24 @@
 package rest;
 
+import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import javax.servlet.ServletContext;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.hateoas.Link;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @RestController
 public class GreetingController {
@@ -22,25 +27,17 @@ public class GreetingController {
 	private ServletContext servletContext;
 	
 	public List<Greeting> getList() {
-		Object obj = servletContext.getAttribute("rest");
-		List<Greeting> ls = new ArrayList<Greeting>();
+		Object obj = servletContext.getAttribute("greetings");
 		
 		if (obj == null) {
-			Greeting greeting = new Greeting(0, "init");
-			greeting.add(Link.of("https://localhost:8080/spring-rest/greeting/0"));
-			ls.add(greeting);
-			servletContext.setAttribute("rest", ls);
+			List<Greeting> ls = new ArrayList<Greeting>();
+			servletContext.setAttribute("greetings", ls);
+			return ls;
 		} else {
-			if (obj instanceof List<?>) {
-				for (Object o : (List<?>) obj) {
-					if (o instanceof Greeting) {
-						ls.add((Greeting) o);
-					}
-				}
-			}
+			@SuppressWarnings("unchecked")
+			List<Greeting> ls = (List<Greeting>) obj;
+			return ls;
 		}
-		
-		return ls;
 	}
 	
 	@GetMapping("/greeting")
@@ -49,51 +46,49 @@ public class GreetingController {
 	}
 	
 	@GetMapping("/greeting/{id}")
-	public List<Greeting> greetingGet(@PathVariable final long id) {
-		List<Greeting> response = getList();
-		response = response.stream()
-			.filter(x -> x.getId() == id)
-			.collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
-		return response;
+	public Greeting greetingGet(@PathVariable final long id) {
+		return getList().stream().filter(x -> x.getId() == id).findAny().get();
 	}
 	
 	@PostMapping("/greeting")
-	public Greeting greetingPost(@RequestBody Greeting greeting) {
-		greeting.add(Link.of("https://localhost:8080/spring-rest/greeting/" + greeting.getId()));
+	public ResponseEntity<Object> greetingPost(@RequestBody HashMap<String, String> map) {
+		List<Greeting> ls = getList();
+		Long id = ls.size() != 0 ? ls.get(ls.size()-1).getId() + 1 : 0; // 마지막 요소의 id + 1
+		Greeting greeting = new Greeting(id , map.get("content"));
+		ls.add(greeting);
 		
-		List<Greeting> response = getList();
-		response.add(greeting);
-		servletContext.setAttribute("rest", response);
+		URI location = ServletUriComponentsBuilder
+				.fromCurrentRequest()
+				.path("/{id}")
+				.buildAndExpand(id)
+				.toUri();
 		
-		return greeting;
+		return ResponseEntity.created(location).build();
 	}
 	
 	@PutMapping("/greeting/{id}")
-	public Greeting greetingPut(@PathVariable final long id, @RequestBody Greeting greeting) {
-		List<Greeting> response = getList();
-		response = response.stream()
-			.map(x -> x.getId() != id ? x : greeting)
-			.collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
-		servletContext.setAttribute("rest", response);
+	public ResponseEntity<Object> greetingPut(@PathVariable final long id,
+			@RequestBody HashMap<String, String> map) {
 		
-		return greeting;
+		getList()
+			.stream()
+			.filter(x -> x.getId() == id)
+			.findAny()
+			.get()
+			.setContent(map.get("content"));
+		
+		URI location = ServletUriComponentsBuilder
+				.fromCurrentRequest()
+				.build()
+				.toUri();
+		
+		return ResponseEntity.created(location).build();
 	}
 	
 	@DeleteMapping("/greeting/{id}")
-	public String greetingPut(@PathVariable final long id) {
-		try {
-			List<Greeting> response = getList();
-			response = response.stream()
-				.filter(x -> x.getId() != id)
-				.collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
-			servletContext.setAttribute("rest", response);
-			
-			return "success";
-		} catch (Exception e) {
-			e.printStackTrace();
-			
-			return "fail";
-		}
+	@ResponseStatus(value = HttpStatus.NO_CONTENT)
+	public void greetingDelete(@PathVariable final long id) {
+		getList().removeIf(x -> x.getId() == id);
 	}
 	
 }
