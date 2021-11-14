@@ -32,6 +32,10 @@ public class RestClient {
 		return null;
 	}
 	
+	public String get(String requestUrl, long id) {
+		return get(requestUrl + "/" + id);
+	}
+	
 	public void post(String requestUrl, Greeting greeting) {
 		HttpPost httpPost = new HttpPost(requestUrl);
 		httpPost.addHeader("User-Agent", USER_AGENT);

@@ -1,6 +1,8 @@
 package rest;
 
-public class Greeting {
+import org.springframework.hateoas.RepresentationModel;
+
+public class Greeting extends RepresentationModel<Greeting> {
 
 	private long id;
 	private String content;

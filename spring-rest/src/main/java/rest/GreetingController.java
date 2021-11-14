@@ -6,6 +6,7 @@ import java.util.List;
 import javax.servlet.ServletContext;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.Link;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,7 +26,9 @@ public class GreetingController {
 		List<Greeting> ls = new ArrayList<Greeting>();
 		
 		if (obj == null) {
-			ls.add(new Greeting(0, "init"));
+			Greeting greeting = new Greeting(0, "init");
+			greeting.add(Link.of("https://localhost:8080/spring-rest/greeting/0"));
+			ls.add(greeting);
 			servletContext.setAttribute("rest", ls);
 		} else {
 			if (obj instanceof List<?>) {
@@ -45,8 +48,19 @@ public class GreetingController {
 		return getList();
 	}
 	
+	@GetMapping("/greeting/{id}")
+	public List<Greeting> greetingGet(@PathVariable final long id) {
+		List<Greeting> response = getList();
+		response = response.stream()
+			.filter(x -> x.getId() == id)
+			.collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+		return response;
+	}
+	
 	@PostMapping("/greeting")
 	public Greeting greetingPost(@RequestBody Greeting greeting) {
+		greeting.add(Link.of("https://localhost:8080/spring-rest/greeting/" + greeting.getId()));
+		
 		List<Greeting> response = getList();
 		response.add(greeting);
 		servletContext.setAttribute("rest", response);

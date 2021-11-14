@@ -14,6 +14,9 @@ public class Main {
 		client.post(path, new Greeting(1, "Post"));
 		System.out.println(client.get(path));
 		
+		// Get2
+		System.out.println(client.get(path, 1));
+		
 		// Put
 		client.put(path, 1, new Greeting(1, "Put"));
 		System.out.println(client.get(path));
